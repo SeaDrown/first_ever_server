@@ -1,47 +1,19 @@
-use axum::{
-    Router,
-    extract::{Path, Query},
-    routing::get,
-};
-use std::collections::HashMap;
+use crate::state::AppState;
 
-async fn root() -> &'static str {
-    "THIS IS THE ROOT! BACK END WEB DEV HERE I COME!!"
-}
+mod handlers;
+mod models;
+mod routes;
+mod state;
 
 #[tokio::main]
 async fn main() {
-    let app: Router = Router::new()
-        .route("/", get(root))
-        .route("/health", get(health))
-        .route("/tasks", get(list_tasks).post(create_task)) // in this case, this path supports both GET and POST operation
-        .route("/tasks/{id}", get(get_task_from_id)) // {id} will be replaced by the id of the requested task, /1, /999, etc
-    ;
+    let state = AppState::new();
 
-    let listener = tokio::net::TcpListener::bind("0.0.0.0:9999").await.unwrap();
+    let app = routes::app(state); // 'app' just returns the Router obj in axum
+
+    let listener = tokio::net::TcpListener::bind("0.0.0.0:9999").await.unwrap(); // create a tcp listener on port 9999
 
     println!("server starting...");
 
     axum::serve(listener, app).await.unwrap(); // this future will never finish, until the app is shut down
-}
-
-// id path is passed into the function by default, axum is wonderful!
-async fn get_task_from_id(Path(id): Path<u32>) -> String {
-    format!("You requested task with task ID {}", id)
-}
-
-async fn health() -> &'static str {
-    "O.K"
-}
-
-async fn list_tasks(Query(params): Query<HashMap<String, String>>) -> String {
-    let filter = params
-        .get("done") // get the "done" parameter, or just return "all"
-        .map_or("all".to_string(), |v| format!("done = {}", v));
-
-    format!("listing tasks, filter: {}", filter)
-}
-
-async fn create_task() -> &'static str {
-    "created a task!!!"
 }
